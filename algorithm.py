@@ -10,17 +10,17 @@ beta = 1
 rho = 0.5
 #Liczba cykli
 C = 20
-#Liczba mrówek
+#Liczba mrowek
 M = 10
 #Wartość początkowa
-tau_0 = 1
+tau_0 = 0.1
 #Inicjalizacja algorytmu
-G = [[1,1,1],\
+G = [[1,0,1],\
     [1,1,1],\
     [1,1,1]
     ]
 #Metryka
-Metric = [[5,1000,3],[3,2,1],[3,2,1]]
+Metric = [[5,0,3],[3,2,1],[3,2,1]]
 
 ###NIE EDYTUJEMY PARAMETRÓW###
 #liczba kolumn
@@ -37,18 +37,20 @@ Je = []
 #Wartość Je_best best przechowuje [K,Je_best] gzie K to lista przechwoująca węzły ścieżki a Je Best to wartość funkcji celu
 Je_best = [0]  
 
-
 def goal_function(K):
     sum = 0
     for j, i in K:
-        sum += Metric[j][i]
+        if G[j][i] and Metric[j][i]:
+            sum += Metric[j][i]
+        else:
+            return 0
     #rówżnomiernie rozprowadzamy wartość funkcji celu na poszczególny węzeł
     Je = sum/D
     return Je
 
 def set_delta_tau_k_ij(t,k,K,Je):
     for j, i in K:
-        if G[j][i]:
+        if G[j][i] and Je:
             tau_all[k][j][i] = 1/Je
         else:
             tau_all[k][j][i] = 0
@@ -66,7 +68,7 @@ def get_eta_ij(t,j,i):
 #TODO pytanie czy zapamiętujemy wartość tablicy feromonów po każdej iteracji
 def set_tau_ij(t,j,i):
     def tau_func(k):
-        return tau_all[k][j][i] 
+        return tau_all[k][j][i]
     tau[j][i] = (1-rho)*tau[j][i] + new_sum(M,tau_func) + rho*tau_best[j][i]
 
 #Prawdopodobieństwo wybrania węzła j będąc na węźle i
