@@ -21,6 +21,17 @@ class ConnectionGraph:
             )
         )
 
+    def get_k(self, indexes: List[int], origin: int) -> List[int]:
+        list_of_indexes: List[int] = [0] * len(self.ips)
+        for index in indexes:
+            for connection in self.connections:
+                if connection.first == index:
+                    list_of_indexes[connection.second] = 1
+                if connection.second == index:
+                    list_of_indexes[connection.first] = 1
+        list_of_indexes[origin] = 0
+        return list_of_indexes
+
     def get_by_ips(self, first: str, second: str) -> Optional[NetworkConnection]:
         index_of_first = self.ips.index(first)
         index_of_second = self.ips.index(second)
@@ -33,16 +44,15 @@ class ConnectionGraph:
         return None
 
     # TODO: Optimise two methods below
-    def get_adjacency_matrix(self) -> List[List[int]]:
+    def get_g_metrix(self, origin: str, dest: str) -> List[List[int]]:
         matrix: List[List[int]] = []
-        for ip in self.ips:
-            list_to_add: List[int] = []
-            for ip2 in self.ips:
-                if self.get_by_ips(ip, ip2) is not None:
-                    list_to_add.append(1)
-                else:
-                    list_to_add.append(0)
-            matrix.append(list_to_add)
+        originIndex: int = self.ips.index(origin)
+        destIndex: int = self.ips.index(dest)
+        matrix.append(self.get_k([originIndex], originIndex))
+
+        while not matrix[len(matrix) - 1][destIndex]:
+            matrix.append(self.get_k([i for i, x in enumerate(matrix[len(matrix) - 1]) if x == 1], originIndex))
+        matrix.append(self.get_k([destIndex], destIndex))
         return matrix
 
     def get_metrics_matrix(self) -> List[List[int]]:
