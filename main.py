@@ -1,3 +1,4 @@
+from algorithm import EditableParams, Calculator
 
 from connections import ConnectionGraph
 
@@ -13,4 +14,12 @@ connections.append("IP 5", "IP 2", 2)
 
 print(connections.get_adjacency_matrix())
 print(connections.get_metrics_matrix())
+
+editable_params: EditableParams = EditableParams(1, 1, 0.5, 20, 10, 0.1)
+
+calculator: Calculator = Calculator(editable_params, connections.get_adjacency_matrix(), connections.get_metrics_matrix())
+
+calculator.run_aco_algorithm()
+calculator.printInfo()
+
 
