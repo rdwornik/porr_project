@@ -17,8 +17,14 @@ class EditableParams:
         self.alfa = alfa
         self.beta = beta
         self.rho = rho
+
+        # Liczba cykli
         self.C = C
+
+        # Liczba mrowek
         self.M = M
+
+        # Wartość początkowa
         self.tau_0 = tau_0
 
 
