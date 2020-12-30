@@ -1,7 +1,12 @@
 venv
 venv/*
 .vscode
+.vscode/*
 tempCodeRunnerFile.py
 __pycache__
 __pycache__/*
 test.py
+input*
+*.png
+*.txt
+main.py

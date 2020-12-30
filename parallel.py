@@ -4,6 +4,10 @@ import pymp
 from utils import removeDuplicates, new_sum, roulette_selection
 from config import G, Metric, alfa, beta, rho, C, M, tau_0
 
+import matplotlib
+import matplotlib.pyplot as plt
+import networkx as nx
+
 #liczba kolumn
 D = len(G[0])
 #liczba wierszy
@@ -71,6 +75,9 @@ def get_p_k_ij(t,k,j,i):
 def get_Je_best(Je_best):
     return removeDuplicates(Je_best)
 
+def get_tau():
+    return tau
+
 def run_aco_algorithm():
     elements = [e for e in range(0,R)]
     #ilość cykli
@@ -100,5 +107,11 @@ def run_aco_algorithm():
 if __name__ == "__main__":
     run_aco_algorithm()
     #print tablicy feromonów
-    print(tau)
+    print(get_tau())
     print(get_Je_best(Je_best))
+    Gr = nx.from_numpy_matrix(np.matrix(G), create_using=nx.DiGraph)
+    layout = nx.spring_layout(Gr)
+    nx.draw(Gr, layout)
+    nx.draw_networkx_edge_labels(Gr, pos=layout)
+    plt.show()
+    plt.savefig('books_read.png')

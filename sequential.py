@@ -89,8 +89,30 @@ def run_aco_algorithm():
             for j in range(0,R):
                 set_tau_ij(t,j,i) 
 
+
+
 if __name__ == "__main__":
     run_aco_algorithm()
     #print tablicy feromonów
     print(tau)
     print(get_Je_best(Je_best))
+
+
+    for i, row in enumerate(tau,0):
+        for j, col in enumerate(row,0):
+            if G[i][j] == 0:
+                tau[i][j] = 0
+
+    print(tau.argmax(0))
+    c = 1
+    G2 = np.array(G)
+    for j, col in enumerate(np.transpose(G),0):
+        for i, row in enumerate(col,0):
+                if G[i][j] == 1:
+                        G2[i][j] = c
+                        c += 1
+    path = []
+    for j, col in enumerate(np.transpose(G2)):
+        path.append(G2[tau.argmax(0)[j]][j])
+
+    print(path)
