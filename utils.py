@@ -22,22 +22,24 @@ def new_sum(N, fun):
     return sum
 
 def get_adjency_matrix(G):
-    n = np.count_nonzero(G)
+
+    G2 = np.delete(G, -1, axis=1)
+    n = np.count_nonzero(G2)
     A = np.zeros((n+2,n+2))
 
-    rows1 = np.where(G[:,0] != 0)[0]
+    rows1 = np.where(G2[:,0] != 0)[0]
     for i in rows1:
-        A[i+1][0] = G[i][0]
+        A[i+1][0] = G2[i][0]
 
     c1 = len(rows1) + 1
     c2 = 1
-    for idx, col in enumerate(np.transpose(G)[1:],1):
+    for idx, col in enumerate(np.transpose(G2)[1:],1):
         rows2 = np.where(col != 0)[0]
         if len(rows1):
             for j in rows1:
                 tmp = c1
                 for i in rows2:
-                    A[c1][c2] = G[i][idx]
+                    A[c1][c2] = G2[i][idx]
                     c1+=1
                 c2+=1
                 c1 = tmp
@@ -48,7 +50,7 @@ def get_adjency_matrix(G):
 
     rows1 = np.where(G[:,-1] != 0)[0]
     for i in rows1:
-        A[-1][c2] = 1
+        A[-1][c2] = G[:,-1][i]
         c2+=1   
 
     return A + np.transpose(A)

@@ -10,3 +10,7 @@ input*
 *.png
 *.txt
 main.py
+out_parallel
+out_parallel/*
+out_seq
+out_seq/*
