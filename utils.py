@@ -1,3 +1,9 @@
+import numpy as np
+import networkx as nx
+import matplotlib.pyplot as plt
+import os
+import utils
+from shutil import copyfile
 from numpy.random import choice
 
 #usunięcie duplikatu w tuplach i posortowanie względem iteracji
@@ -14,3 +20,139 @@ def new_sum(N, fun):
     for i in range(0,N):
         sum += fun(i)
     return sum
+
+def get_adjency_matrix(G):
+    n = np.count_nonzero(G)
+    A = np.zeros((n+2,n+2))
+
+    rows1 = np.where(G[:,0] != 0)[0]
+    for i in rows1:
+        A[i+1][0] = G[i][0]
+
+    c1 = len(rows1) + 1
+    c2 = 1
+    for idx, col in enumerate(np.transpose(G)[1:],1):
+        rows2 = np.where(col != 0)[0]
+        if len(rows1):
+            for j in rows1:
+                tmp = c1
+                for i in rows2:
+                    A[c1][c2] = G[i][idx]
+                    c1+=1
+                c2+=1
+                c1 = tmp
+        else:
+            c2+=1
+        rows1 = rows2
+        c1+=len(rows1)
+
+    rows1 = np.where(G[:,-1] != 0)[0]
+    for i in rows1:
+        A[-1][c2] = 1
+        c2+=1   
+
+    return A + np.transpose(A)
+
+def get_graph_from_file(inputfile):
+    with open(inputfile, 'r') as f:
+        return np.array([[int(num) for num in line.split(',')] for line in f])
+
+def draw_graph(G, weight: bool,outputfile):
+    G2 = nx.from_numpy_matrix(G,create_using=nx.DiGraph)
+    f = plt.figure()
+
+    if weight:
+        layout = nx.spring_layout(G2)
+        labels = nx.get_edge_attributes(G2, "weight")
+        nx.draw(G2, pos=layout, with_labels=True, ax=f.add_subplot(111))
+        nx.draw_networkx_edge_labels(G2, pos=layout,edge_labels=labels)
+    else:
+        nx.draw(G2, with_labels=True, ax=f.add_subplot(111))
+
+    f.savefig(outputfile)
+
+def plot_scutter_Je_best(Je_best,outputfile):
+    plt.scatter(*zip(*Je_best))
+    plt.title('Warości funkcji celu w kolejnych iteracjach')
+    plt.xlabel('iteracja (t)')
+    plt.ylabel('wartość funkcji celu (Je best)')
+    plt.savefig(outputfile)
+
+def plot_line_Je_best(Je_best,outputfile):
+    plt.plot(*zip(*Je_best))
+    plt.title('Warości funkcji celu w kolejnych iteracjach')
+    plt.xlabel('iteracja (t)')
+    plt.ylabel('wartość funkcji celu (Je best)')
+    plt.savefig(outputfile)
+
+
+def get_filename_txt(fn):
+    file_name = fn
+    if os.path.isfile(file_name):
+        expand = 1
+        while True:
+            expand += 1
+            new_file_name = file_name.split(".txt")[0] + str(expand) + ".txt"
+            if os.path.isfile(new_file_name):
+                continue
+            else:
+                file_name = new_file_name
+                break
+    return file_name
+
+def get_filename_png(fn):
+    file_name = fn
+    if os.path.isfile(file_name):
+        expand = 1
+        while True:
+            expand += 1
+            new_file_name = file_name.split(".png")[0] + str(expand) + ".png"
+            if os.path.isfile(new_file_name):
+                continue
+            else:
+                file_name = new_file_name
+                break
+    return file_name
+
+def save(tau, path, Je_best, Metric, time, dir):
+
+    fn_path = dir+ r'/' + 'path.txt'
+    fn_tau = dir+ r'/' + 'tau.txt'
+    fn_time = dir+ r'/' + 'time.txt'
+    fn_config = dir+ r'/' + 'config.txt'
+    fn_line_je_best = dir+ r'/' + 'line_je_best.png'
+    fn_scutter_je_best = dir+ r'/' + 'scutter_je_best.png'
+    fn_weight_graph = dir+ r'/' + 'weight_graph.png'
+
+    fn_path = get_filename_txt(fn_path)
+    fn_tau = get_filename_txt(fn_tau)
+    fn_time = get_filename_txt(fn_time)
+    fn_config = get_filename_txt(fn_config)
+    fn_line_je_best = get_filename_png(fn_line_je_best)
+    fn_scutter_je_best = get_filename_png(fn_scutter_je_best)
+    fn_weight_graph = get_filename_png(fn_weight_graph)
+
+    #config file
+    copyfile('config.py', fn_config)
+    #print tablicy feromonów
+    with open(fn_path, 'w') as f:
+        f.write("The path is: ")
+        for item in path:
+            f.write("%s " % item)
+    
+    np.savetxt(fn_tau, tau, delimiter=' & ', fmt='%1.3f')
+    string_to_add = r'\\'
+
+    with open(fn_tau, 'r') as f:
+        file_lines = [''.join([x.strip(), string_to_add, '\n']) for x in f.readlines()]
+
+    with open(fn_tau, 'w') as f:
+        f.writelines(file_lines) 
+
+    with open(fn_time, 'w') as f:
+        # f.write("The time is: ")
+        f.write("%s " % time)
+
+    utils.plot_line_Je_best(Je_best,fn_line_je_best)
+    utils.plot_scutter_Je_best(Je_best,fn_scutter_je_best)
+    utils.draw_graph(utils.get_adjency_matrix(Metric),True,fn_weight_graph)

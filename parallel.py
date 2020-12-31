@@ -1,28 +1,24 @@
 import numpy as np
+import time
 import pymp
-
+import utils
+import copy
 from utils import removeDuplicates, new_sum, roulette_selection
-from config import G, Metric, alfa, beta, rho, C, M, tau_0
+from config import alfa, beta, rho, C, M, tau_0, fn_input_metric, N
 
-import matplotlib
-import matplotlib.pyplot as plt
-import networkx as nx
-
+Metric = utils.get_graph_from_file(fn_input_metric)
 #liczba kolumn
-D = len(G[0])
+D = len(Metric[0])
 #liczba wierszy
-R = len(G)
+R = len(Metric)
 #tau inizjalizacja
 tau = pymp.shared.array(np.array((R,D)))
 tau[...] = tau_0
-
 #tau k inizjalizacja
 tau_all = pymp.shared.array(np.array((M,R,D)))
 tau_all[...] = tau_0
-
 #tau best inizjalizacja
 tau_best = pymp.shared.array(np.array((R,D)))
-
 #Wartość Je_best best przechowuje [t,Je_best] t kolejna iteracja a Je_best to wartość funkcji celu
 Je_best = pymp.shared.list([(0,0)])
 
@@ -30,41 +26,38 @@ Je_best = pymp.shared.list([(0,0)])
 def goal_function(K):
     sum = 0
     for j, i in K:
-        if G[j][i] and Metric[j][i]:
+        if Metric[j][i]:
             sum += Metric[j][i]
         else:
             return 0
     #rówżnomiernie rozprowadzamy wartość funkcji celu na poszczególny węzeł
     return sum
-    
+
 #TODO do wymyślenia funkcja heurystyczna na chwilę obecną zwraca wartość metryki
 def get_eta_ij(t,j,i):
         return Metric[j][i]
 
-def set_delta_tau_k_ij(t,k,K,Je,p):
-    # with p.lock:
+def set_delta_tau_k_ij(t,k,K,Je):
     for j, i in K:
-        if G[j][i] and Je:
+        if Metric[j][i] and Je:
             tau_all[k][j][i] = 1/Je
         else:
             tau_all[k][j][i] = 0
 
-def set_delta_tau_best_ij(t,K,Je,p):
-    with p.lock:
-        if Je_best[-1][1] == 0 or Je_best[-1][1] > Je:
-                Je_best.append((t,Je))
-                tau_best[...] = .0
-                for j, i in K:
-                    tau_best[j][i] = Je
-        else:
-            Je_best.append((t,Je_best[-1][1]))
+def set_delta_tau_best_ij(t,K,Je):
+    if Je_best[-1][1] == 0 or Je_best[-1][1] > Je:
+        Je_best.append((t,Je))
+        tau_best[...] = .0
+        for j, i in K:
+            tau_best[j][i] = Je
+    else:
+        Je_best.append((t,Je_best[-1][1]))
         
 #TODO pytanie czy zapamiętujemy wartość tablicy feromonów po każdej iteracji
-def set_tau_ij(t,j,i,p):
+def set_tau_ij(t,j,i):
     def tau_func(k):
         return tau_all[k][j][i]
-    with p.lock:
-        tau[j][i] = (1-rho)*tau[j][i] + new_sum(M,tau_func) + rho*tau_best[j][i]
+    tau[j][i] = (1-rho)*tau[j][i] + new_sum(M,tau_func) + rho*tau_best[j][i]
 
 #Prawdopodobieństwo wybrania węzła j będąc na węźle i
 def get_p_k_ij(t,k,j,i):
@@ -73,17 +66,37 @@ def get_p_k_ij(t,k,j,i):
     return pow(tau[j][i],alfa)*pow(get_eta_ij(t,j,i),beta)/new_sum(R,tau_func)
 
 def get_Je_best(Je_best):
-    return removeDuplicates(Je_best)
+    return removeDuplicates(Je_best)[1:]
 
 def get_tau():
-    return tau
+    a = copy.deepcopy(tau)
+    for i, row in enumerate(tau,0):
+        for j, col in enumerate(row,0):
+            if Metric[i][j] == 0:
+                a[i][j] = 0
+    return np.round(a,decimals=2)
+
+def get_path():
+    G = copy.deepcopy(Metric)
+    c = 1
+    for j, col in enumerate(np.transpose(G),0):
+        for i, row in enumerate(col,0):
+                if G[i][j] != 0:
+                        G[i][j] = c
+                        c += 1
+    path = [0]
+    for j, col in enumerate(np.transpose(G)):
+        path.append(G[tau.argmax(0)[j]][j])
+    n = np.count_nonzero(Metric)
+    path.append(n+1)
+    return path
 
 def run_aco_algorithm():
     elements = [e for e in range(0,R)]
     #ilość cykli
     for t in range(1, C+1):
         #ilość mrówek
-        with pymp.Parallel(M) as p:
+        with pymp.Parallel(N) as p:
             for k in p.range(0,M):
                 #losowanie ścieżek
                 K = []
@@ -94,24 +107,21 @@ def run_aco_algorithm():
                             weights.append(get_p_k_ij(t,k,j,i))
                         j = roulette_selection(elements,weights)
                         K.append((j,i))
-                Je = goal_function(K)
-                #Pozostawienie feromonu po przejściu pierwszej ścieżki
-                set_delta_tau_k_ij(t,k,K,Je,p)
-                #sprawdzamy czy najlepsza ścieżka do tej pory
-                set_delta_tau_best_ij(t,K,Je,p)
+                with p.lock:
+                    Je = goal_function(K)
+                    #Pozostawienie feromonu po przejściu pierwszej ścieżki
+                    set_delta_tau_k_ij(t,k,K,Je)
+                    #sprawdzamy czy najlepsza ścieżka do tej pory
+                    set_delta_tau_best_ij(t,K,Je)
             #ustawiamy tablice feromonuów
-            for i in range(0,D):
-                for j in range(0,R):
-                    set_tau_ij(t,j,i,p) 
+            with p.lock:
+                for i in range(0,D):
+                    for j in range(0,R):
+                        set_tau_ij(t,j,i) 
         
 if __name__ == "__main__":
+    t = time.process_time()
     run_aco_algorithm()
-    #print tablicy feromonów
-    print(get_tau())
-    print(get_Je_best(Je_best))
-    Gr = nx.from_numpy_matrix(np.matrix(G), create_using=nx.DiGraph)
-    layout = nx.spring_layout(Gr)
-    nx.draw(Gr, layout)
-    nx.draw_networkx_edge_labels(Gr, pos=layout)
-    plt.show()
-    plt.savefig('books_read.png')
+    elapsed_time = time.process_time() - t
+    print(elapsed_time)
+    utils.save(get_tau(),get_path(),get_Je_best(Je_best),Metric, elapsed_time, 'out_parallel')

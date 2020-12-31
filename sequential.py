@@ -1,13 +1,16 @@
 import numpy as np
+import time
 import pymp
-
+import utils
+import copy
 from utils import removeDuplicates, new_sum, roulette_selection
-from config import G, Metric, alfa, beta, rho, C, M, tau_0
+from config import alfa, beta, rho, C, M, tau_0, fn_input_metric
 
+Metric = utils.get_graph_from_file(fn_input_metric)
 #liczba kolumn
-D = len(G[0])
+D = len(Metric[0])
 #liczba wierszy
-R = len(G)
+R = len(Metric)
 #tau inizjalizacja
 tau = np.zeros((R,D))
 tau[...] = tau_0
@@ -23,7 +26,7 @@ Je_best = [(0,0)]
 def goal_function(K):
     sum = 0
     for j, i in K:
-        if G[j][i] and Metric[j][i]:
+        if Metric[j][i]:
             sum += Metric[j][i]
         else:
             return 0
@@ -36,7 +39,7 @@ def get_eta_ij(t,j,i):
 
 def set_delta_tau_k_ij(t,k,K,Je):
     for j, i in K:
-        if G[j][i] and Je:
+        if Metric[j][i] and Je:
             tau_all[k][j][i] = 1/Je
         else:
             tau_all[k][j][i] = 0
@@ -44,7 +47,7 @@ def set_delta_tau_k_ij(t,k,K,Je):
 def set_delta_tau_best_ij(t,K,Je):
     if Je_best[-1][1] == 0 or Je_best[-1][1] > Je:
         Je_best.append((t,Je))
-        tau_best = np.zeros((R,D))
+        tau_best[...] = .0
         for j, i in K:
             tau_best[j][i] = Je
     else:
@@ -63,7 +66,30 @@ def get_p_k_ij(t,k,j,i):
     return pow(tau[j][i],alfa)*pow(get_eta_ij(t,j,i),beta)/new_sum(R,tau_func)
 
 def get_Je_best(Je_best):
-    return removeDuplicates(Je_best)
+    return removeDuplicates(Je_best)[1:]
+
+def get_tau():
+    a = copy.deepcopy(tau)
+    for i, row in enumerate(tau,0):
+        for j, col in enumerate(row,0):
+            if Metric[i][j] == 0:
+                a[i][j] = 0
+    return np.round(a,decimals=2)
+
+def get_path():
+    G = copy.deepcopy(Metric)
+    c = 1
+    for j, col in enumerate(np.transpose(G),0):
+        for i, row in enumerate(col,0):
+                if G[i][j] != 0:
+                        G[i][j] = c
+                        c += 1
+    path = [0]
+    for j, col in enumerate(np.transpose(G)):
+        path.append(G[tau.argmax(0)[j]][j])
+    n = np.count_nonzero(Metric)
+    path.append(n+1)
+    return path
 
 def run_aco_algorithm():
     elements = [e for e in range(0,R)]
@@ -90,29 +116,9 @@ def run_aco_algorithm():
                 set_tau_ij(t,j,i) 
 
 
-
 if __name__ == "__main__":
+    t = time.process_time()
     run_aco_algorithm()
-    #print tablicy feromonów
-    print(tau)
-    print(get_Je_best(Je_best))
-
-
-    for i, row in enumerate(tau,0):
-        for j, col in enumerate(row,0):
-            if G[i][j] == 0:
-                tau[i][j] = 0
-
-    print(tau.argmax(0))
-    c = 1
-    G2 = np.array(G)
-    for j, col in enumerate(np.transpose(G),0):
-        for i, row in enumerate(col,0):
-                if G[i][j] == 1:
-                        G2[i][j] = c
-                        c += 1
-    path = []
-    for j, col in enumerate(np.transpose(G2)):
-        path.append(G2[tau.argmax(0)[j]][j])
-
-    print(path)
+    elapsed_time = time.process_time() - t
+    print(elapsed_time)
+    utils.save(get_tau(),get_path(),get_Je_best(Je_best),Metric, elapsed_time, 'out_seq')
