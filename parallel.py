@@ -4,7 +4,7 @@ import pymp
 import utils
 import copy
 from utils import removeDuplicates, new_sum, roulette_selection
-from config import alfa, beta, rho, C, M, tau_0, fn_input_metric, N
+from config import alfa, beta, rho, C, M, tau_0, fn_input_metric, N, delta
 
 Metric = utils.get_graph_from_file(fn_input_metric)
 #liczba kolumn
@@ -20,8 +20,8 @@ tau_all[...] = tau_0
 #tau best inizjalizacja
 tau_best = pymp.shared.array(np.array((R,D)))
 #Wartość Je_best best przechowuje [t,Je_best] t kolejna iteracja a Je_best to wartość funkcji celu
-Je_best = pymp.shared.list([(0,0)])
-
+Je_best = 0
+Je_best_t = pymp.shared.list([(0,0)])
 #definicja funkcji celu na chwilę obecną równomiernie rozprowadza feromony na węzły które należą do najlepszej ścieżki
 def goal_function(K):
     sum = 0
@@ -45,13 +45,12 @@ def set_delta_tau_k_ij(t,k,K,Je):
             tau_all[k][j][i] = 0
 
 def set_delta_tau_best_ij(t,K,Je):
-    if Je_best[-1][1] == 0 or Je_best[-1][1] > Je:
-        Je_best.append((t,Je))
+    global Je_best
+    if Je_best == 0 or Je_best > Je:
+        Je_best = Je
         tau_best[...] = .0
         for j, i in K:
             tau_best[j][i] = Je
-    else:
-        Je_best.append((t,Je_best[-1][1]))
         
 #TODO pytanie czy zapamiętujemy wartość tablicy feromonów po każdej iteracji
 def set_tau_ij(t,j,i):
@@ -64,9 +63,6 @@ def get_p_k_ij(t,k,j,i):
     def tau_func(x):
         return pow(tau[x][i],alfa)*pow(get_eta_ij(t,x,i),beta)
     return pow(tau[j][i],alfa)*pow(get_eta_ij(t,j,i),beta)/new_sum(R,tau_func)
-
-def get_Je_best(Je_best):
-    return removeDuplicates(Je_best)[1:]
 
 def get_tau():
     a = copy.deepcopy(tau)
@@ -94,34 +90,39 @@ def get_path():
 def run_aco_algorithm():
     elements = [e for e in range(0,R)]
     #ilość cykli
-    for t in range(1, C+1):
+    t = 1
+    while utils.rate_of_convergence(Je_best_t, t, delta) > 0.0001 and t < 250:
         #ilość mrówek
         with pymp.Parallel(N) as p:
             for k in p.range(0,M):
                 #losowanie ścieżek
                 K = []
-                with p.lock:
-                    for i in range(0,D):
-                        weights = []
+                for i in range(0,D):
+                    weights = []
+                    with p.lock:
                         for j in range (0,R):
                             weights.append(get_p_k_ij(t,k,j,i))
-                        j = roulette_selection(elements,weights)
-                        K.append((j,i))
+                    j = roulette_selection(elements,weights)
+                    K.append((j,i))
+        
+                Je = goal_function(K)
+                #Pozostawienie feromonu po przejściu pierwszej ścieżki 
+                set_delta_tau_k_ij(t,k,K,Je)
+                #sprawdzamy czy najlepsza ścieżka do tej pory
                 with p.lock:
-                    Je = goal_function(K)
-                    #Pozostawienie feromonu po przejściu pierwszej ścieżki
-                    set_delta_tau_k_ij(t,k,K,Je)
-                    #sprawdzamy czy najlepsza ścieżka do tej pory
                     set_delta_tau_best_ij(t,K,Je)
             #ustawiamy tablice feromonuów
             with p.lock:
                 for i in range(0,D):
                     for j in range(0,R):
-                        set_tau_ij(t,j,i) 
+                        set_tau_ij(t,j,i)
+            Je_best_t.append((t,Je_best))
+            t += 1 
         
 if __name__ == "__main__":
     t = time.process_time()
     run_aco_algorithm()
     elapsed_time = time.process_time() - t
     print(elapsed_time)
-    utils.save(get_tau(),get_path(),get_Je_best(Je_best),Metric, elapsed_time, 'out_parallel')
+    print(Je_best_t)
+    utils.save(get_tau(),get_path(),Je_best_t,Metric, elapsed_time, 'out_parallel')

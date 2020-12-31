@@ -57,14 +57,13 @@ def get_adjency_matrix(G):
 
 def get_graph_from_file(inputfile):
     with open(inputfile, 'r') as f:
-        return np.array([[int(num) for num in line.split(',')] for line in f])
+        return np.array([[int(num) for num in line.split(',')] for line in f if line.strip() != "" ])
 
 def draw_graph(G, weight: bool,outputfile):
     G2 = nx.from_numpy_matrix(G,create_using=nx.DiGraph)
-    f = plt.figure()
-
+    f = plt.figure(3, figsize=(10, 10))
     if weight:
-        layout = nx.spring_layout(G2)
+        layout = nx.spring_layout(G2,k=0.3*1/np.sqrt(len(G2.nodes())),iterations=20)
         labels = nx.get_edge_attributes(G2, "weight")
         nx.draw(G2, pos=layout, with_labels=True, ax=f.add_subplot(111))
         nx.draw_networkx_edge_labels(G2, pos=layout,edge_labels=labels)
@@ -116,45 +115,65 @@ def get_filename_png(fn):
                 break
     return file_name
 
+def rate_of_convergence(Je_best, t, delta): 
+    if t <= delta :
+        return 1
+    eps = np.abs((Je_best[-1][1] - Je_best[-delta][1])/Je_best[-1][1])
+    return eps
+
 def save(tau, path, Je_best, Metric, time, dir):
 
-    fn_path = dir+ r'/' + 'path.txt'
+    # fn_path = dir+ r'/' + 'path.txt'
     fn_tau = dir+ r'/' + 'tau.txt'
-    fn_time = dir+ r'/' + 'time.txt'
-    fn_config = dir+ r'/' + 'config.txt'
+    # fn_time = dir+ r'/' + 'time.txt'
+    # fn_config = dir+ r'/' + 'config.txt'
+    fn_result = dir+ r'/' + 'result.txt'
     fn_line_je_best = dir+ r'/' + 'line_je_best.png'
     fn_scutter_je_best = dir+ r'/' + 'scutter_je_best.png'
     fn_weight_graph = dir+ r'/' + 'weight_graph.png'
 
-    fn_path = get_filename_txt(fn_path)
+    # fn_path = get_filename_txt(fn_path)
     fn_tau = get_filename_txt(fn_tau)
-    fn_time = get_filename_txt(fn_time)
-    fn_config = get_filename_txt(fn_config)
+    # fn_time = get_filename_txt(fn_time)
+    # fn_config = get_filename_txt(fn_config)
+    fn_result = get_filename_txt(fn_result)
     fn_line_je_best = get_filename_png(fn_line_je_best)
     fn_scutter_je_best = get_filename_png(fn_scutter_je_best)
     fn_weight_graph = get_filename_png(fn_weight_graph)
 
     #config file
-    copyfile('config.py', fn_config)
+    copyfile('config.py', fn_result)
     #print tablicy feromonów
-    with open(fn_path, 'w') as f:
-        f.write("The path is: ")
-        for item in path:
-            f.write("%s " % item)
-    
+
     np.savetxt(fn_tau, tau, delimiter=' & ', fmt='%1.3f')
     string_to_add = r'\\'
 
     with open(fn_tau, 'r') as f:
         file_lines = [''.join([x.strip(), string_to_add, '\n']) for x in f.readlines()]
 
-    with open(fn_tau, 'w') as f:
+    with open(fn_tau, 'a') as f:
         f.writelines(file_lines) 
 
-    with open(fn_time, 'w') as f:
-        # f.write("The time is: ")
-        f.write("%s " % time)
+    with open(fn_result, 'a') as f:
+        f.write("\n")
+        f.write("\n")
+        f.write("THE RESULTS ARE: \n \n")
+        f.write("The path path is: ")
+        for item in path:
+            f.write("%s " % item)
+        f.write("\n")
+    
+    with open(fn_result, 'a') as f:
+        f.write("The best path value is: ")
+        f.write("%s " % Je_best[-1][1])
+        f.write("\n")
 
-    utils.plot_line_Je_best(Je_best,fn_line_je_best)
-    utils.plot_scutter_Je_best(Je_best,fn_scutter_je_best)
-    utils.draw_graph(utils.get_adjency_matrix(Metric),True,fn_weight_graph)
+    with open(fn_result, 'a') as f:
+        f.write("The time execution time is: ")
+        f.write("%s " % time)
+        f.write("\n")
+    
+
+    utils.plot_line_Je_best(Je_best[1:],fn_line_je_best)
+    utils.plot_scutter_Je_best(Je_best[1:],fn_scutter_je_best)
+    # utils.draw_graph(utils.get_adjency_matrix(Metric),True,fn_weight_graph)
