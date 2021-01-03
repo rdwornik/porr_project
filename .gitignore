@@ -14,3 +14,4 @@ out_parallel
 out_parallel/*
 out_seq
 out_seq/*
+input_G.txt
