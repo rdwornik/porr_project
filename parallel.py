@@ -4,7 +4,7 @@ import pymp
 import utils
 import copy
 from utils import removeDuplicates, new_sum, roulette_selection
-from config import alfa, beta, rho, C, M, tau_0, fn_input_metric, N, delta
+from config import alfa, beta, rho, C, M, tau_0, fn_input_metric, N, delta, ratio
 
 Metric = utils.get_graph_from_file(fn_input_metric)
 #liczba kolumn
@@ -91,7 +91,7 @@ def run_aco_algorithm():
     elements = [e for e in range(0,R)]
     #ilość cykli
     t = 1
-    while utils.rate_of_convergence(Je_best_t, t, delta) > 0.0001 and t < 250:
+    while utils.rate_of_convergence(Je_best_t, t, delta) > ratio and t < C:
         #ilość mrówek
         with pymp.Parallel(N) as p:
             for k in p.range(0,M):
@@ -123,6 +123,12 @@ if __name__ == "__main__":
     t = time.process_time()
     run_aco_algorithm()
     elapsed_time = time.process_time() - t
+    print("Time")
     print(elapsed_time)
-    print(Je_best_t)
+    print("Best path value")
+    print(Je_best_t[-1][1])
+    print("Best path value2")
+    print(Je_best_t[-delta][1])
+    print("Liczba iteracji")
+    print(Je_best_t[-1][0])
     utils.save(get_tau(),get_path(),Je_best_t,Metric, elapsed_time, 'out_parallel')

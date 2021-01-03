@@ -4,10 +4,11 @@ rho = 0.3
 #Liczba cykli
 C = 250
 #Liczba mrowek
-M = 12
+M = 16
 #Wartość początkowa
 tau_0 = 1
 #liczba wątków
-N = 2
+N = 8
 fn_input_metric = 'input_M.txt'
-delta = 20
+delta = 100
+ratio = 0.000001

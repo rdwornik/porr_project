@@ -172,8 +172,6 @@ def save(tau, path, Je_best, Metric, time, dir):
         f.write("The time execution time is: ")
         f.write("%s " % time)
         f.write("\n")
-    
-
-    utils.plot_line_Je_best(Je_best[1:],fn_line_je_best)
+    # utils.plot_line_Je_best(Je_best[1:],fn_line_je_best)
     utils.plot_scutter_Je_best(Je_best[1:],fn_scutter_je_best)
     # utils.draw_graph(utils.get_adjency_matrix(Metric),True,fn_weight_graph)
