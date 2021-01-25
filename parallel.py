@@ -91,9 +91,9 @@ def run_aco_algorithm():
     elements = [e for e in range(0,R)]
     #ilość cykli
     t = 1
-    while utils.rate_of_convergence(Je_best_t, t, delta) > ratio and t < C:
-        #ilość mrówek
-        with pymp.Parallel(N) as p:
+    with pymp.Parallel(N) as p:
+        while utils.rate_of_convergence(Je_best_t, t, delta) > ratio and t < C:
+            #ilość mrówek
             for k in p.range(0,M):
                 #losowanie ścieżek
                 K = []
